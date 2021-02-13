@@ -9,6 +9,7 @@ import { listFiles } from '../files';
 // Used below, these need to be registered
 import MarkdownEditor from '../MarkdownEditor';
 import PlaintextEditor from '../components/PlaintextEditor';
+import ReactMarkdown from 'react-markdown';
 
 import IconPlaintextSVG from '../public/icon-plaintext.svg';
 import IconMarkdownSVG from '../public/icon-markdown.svg';
@@ -78,17 +79,21 @@ FilesTable.propTypes = {
 
 function Previewer({ file }) {
   const [value, setValue] = useState('');
+  const isMarkdown = file.name.includes('.md');
 
   useEffect(() => {
     (async () => {
       setValue(await file.text());
     })();
   }, [file]);
-
   return (
     <div className={css.preview}>
       <div className={css.title}>{path.basename(file.name)}</div>
-      <div className={css.content}>{value}</div>
+      {isMarkdown ? (
+        <ReactMarkdown className={css.content}>{value}</ReactMarkdown>
+      ) : (
+        <div className={css.content}>{value}</div>
+      )}
     </div>
   );
 }
@@ -99,8 +104,8 @@ Previewer.propTypes = {
 
 // Uncomment keys to register editors for media types
 const REGISTERED_EDITORS = {
-  // "text/plain": PlaintextEditor,
-  // "text/markdown": MarkdownEditor,
+  'text/plain': PlaintextEditor,
+  'text/markdown': MarkdownEditor
 };
 
 function PlaintextFilesChallenge() {
@@ -113,9 +118,21 @@ function PlaintextFilesChallenge() {
   }, []);
 
   const write = file => {
-    console.log('Writing soon... ', file.name);
-
     // TODO: Write the file to the `files` array
+
+    const newFiles = files.map(item => {
+      if (item.name === file.name) {
+        const newActiveFile = new File([`${file.content}`], item.name, {
+          type: item.type,
+          lastModified: Date.now()
+        });
+        setActiveFile(newActiveFile);
+        return newActiveFile;
+      } else {
+        return item;
+      }
+    });
+    setFiles(newFiles);
   };
 
   const Editor = activeFile ? REGISTERED_EDITORS[activeFile.type] : null;
@@ -158,7 +175,7 @@ function PlaintextFilesChallenge() {
         {activeFile && (
           <>
             {Editor && <Editor file={activeFile} write={write} />}
-            {!Editor && <Previewer file={activeFile} />}
+            {Editor && <Previewer file={activeFile} />}
           </>
         )}
 
